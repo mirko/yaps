@@ -1,0 +1,186 @@
+#!/usr/bin/python3
+
+import provsys
+
+if provsys.os_info['ID'] == 'openwrt':
+    OPENWRT = True
+    from openwrt_tools import FStools, DHCP
+else:
+    OPENWRT = False
+    #from nop import NOP as FStools
+    #from nop import NOP as DHCP
+
+from os import environ, path
+from sys import stderr, exc_info
+import json
+import cgi
+from datetime import datetime
+from base64 import b64encode
+
+class FrontendError(provsys.ProvSysError):
+    """Frontend sent unexpected/unsupported data.
+    Will result in HTP 400 / Bad Request."""
+
+class BlockDevMissing(provsys.ProvSysError):
+    """In production mode we expect provisioning info not on the device itself,
+    but on swappable mdeia (e.g. USB thumb drives)."""
+
+def json_serialize_bytes(o):
+    if isinstance(o, bytes):
+        return b64encode(o).decode()
+    raise TypeError("Object is not JSON serializable")
+
+def import_batch(batch):
+    global prov
+    prov.import_batch(batch)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def backup(name=None):
+    global prov
+    global dt_now
+    #dt = datetime.fromtimestamp(int(timestamp))
+    prov.backup(name="backup_%d-%d-%d_%d-%d-%d.tgz" % (dt_now.year, dt_now.month, dt_now.day, dt_now.hour, dt_now.minute, dt_now.second))
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+
+def status():
+    global prov
+    global block
+    global dhcp
+
+    OPENWRT and dhcp.fetch()
+    init = prov.initialized()
+    total = 0
+    free = 0
+    sets = []
+    if init:
+        prov.sql.execute("SELECT `id`, `batch`, `prod_id`, `dev_id`, `fw_ver`, `comment`, `imported_dt`, `downloaded_cnt`, `downloaded_dt` FROM `sets`")
+        set = prov.sql.fetchall()
+        total = len(set)
+        for row in set:
+            sets.append(dict(zip(row.keys(), row)))
+            if not row['dev_id']:
+                free += 1
+
+    res = {
+        'mounted': {
+            #'prov': block.mounted(fslabel="PROV").
+            'import': OPENWRT and block.mounted(fslabel="IMPORT") or True,
+            'export': OPENWRT and block.mounted(fslabel="EXPORT") or True,
+            'takeover': OPENWRT and block.mounted(fslabel="TAKEOVER") or True,
+        },
+        'local': {
+            'initialized': init,
+            'files': init and {'static': prov.get_static_files(), 'dynamic': prov.get_dynamic_files()},
+            'sets': prov.check_consistency_local() and sets or [], # sets and ((OPENWRT and block.mounted(fslabel="PROV")) and prov.check_consistency_local()),
+            'total': total,
+            'free': free,
+            'devices': OPENWRT and dhcp.leases or [],
+         },
+        'import': prov.get_batches(), # if OPENWRT and block.mounted(fslabel="IMPORT") else False,
+        'export': prov.get_backups(), # if OPENWRT and block.mounted(fslabel="EXPORT") else False,
+    }
+    print("Status: 200 OK")
+    print("Content-Type: text/json")
+    print()
+    print(json.dumps(res, default=json_serialize_bytes))
+
+def addSet(id, cert, phonenr, puk=None, activation=None, comment=None):
+    global prov
+    #init = prov.initialized()
+    cert = {
+        'id': id,
+        'cert': cert,
+        'phonenr': phonenr,
+        'puk': puk,
+        'activation': activation,
+        'comment': comment
+    }
+    prov.import_cert(cert)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def setDevID(id, dev_id):
+    global prov
+    prov.assign_set(id, dev_id)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def setComment(id, comment):
+    global prov
+    prov.comment_set(id, comment)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def reset(id):
+    global prov
+    prov.reset_set(id)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def printLabels(id):
+    global prov
+    prov.parse_config()
+    prov.print_label(id=id)
+    print("Status: 200 OK")
+    print("Content-Type: text/plain")
+    print()
+
+def calls(call, args):
+    _calls = {
+        "/import": import_batch,
+        "/export": backup,
+        "/status": status,
+        "/print": printLabels,
+        "/addSet": addSet,
+        "/setDevID": setDevID,
+        "/setComment": setComment,
+        "/reset": reset,
+        #"": showAll,
+    }
+    if not call in _calls:
+        raise FrontendError("No such call")
+    return(_calls.get(call)(**args))
+
+try:
+    prov = provsys.ProvSystem()
+    if OPENWRT:
+        block = FStools()
+        dhcp = DHCP()
+        block.fetch()
+        #if not block.mounted(fslabel="PROV"):
+        #    raise BlockDevMissing("Block device LABEL=PROV not recognized but mandatory")
+    form = cgi.FieldStorage()
+    pathinfo = environ.get("PATH_INFO", "")
+    params = {}
+    for key in form.keys():
+        params[key] = form.getvalue(key)
+    dt_now = datetime.fromtimestamp(int(params['dtnow']))
+    params.pop('dtnow')
+    resp = calls(pathinfo, params)
+except provsys.ProvSysError as e:
+    #e = exc_info()[0]
+    print("Status: 500 ProvSystemError")
+    print("Content-Type: text/json")
+    print()
+    #print(json.dumps([{'code': e.code, 'verbose': e.msg}]))
+    print(json.dumps({'class': e.__class__.__name__ ,'msg': e.msg, 'verb': e.verb}))
+    raise
+#except (TypeError, KeyError) as e: #TODO: too generic!
+#    print("Status: 400 YAPS__NoSuchCall")
+#    print("Content-Type: text/plain")
+#    print()
+#    print(e.__str__())
+except Exception as e:
+    print("Status: 500 Server Error")
+    print("Content-Type: text/html")
+    print()
+    raise

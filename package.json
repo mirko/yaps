@@ -1,0 +1,25 @@
+{
+  "name": "yaps.git",
+  "version": "1.0.0",
+  "description": "Yet Another Provisioning System - (supposed to be) simple, flexible, consistent",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mirko/yaps.git"
+  },
+  "author": "Mirko Vogt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mirko/yaps/issues"
+  },
+  "homepage": "https://github.com/mirko/yaps#readme",
+  "dependencies": {
+    "bootstrap": "^4.3.1",
+    "jquery": "^3.4.0",
+    "jquery-qrcode2": "^1.0.0",
+    "popper.js": "^1.15.0",
+    "underscore": "^1.9.1"
+  }
+}

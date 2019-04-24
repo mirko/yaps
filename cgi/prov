@@ -1,0 +1,136 @@
+#!/usr/bin/python3
+
+import provsys
+
+from os import environ
+from sys import stdout, stderr
+import cgi
+import json
+
+def dumps(args):
+    return json.dumps(args, indent=2,separators=(',', ': '))
+
+class FrontendError(provsys.ProvSysError):
+    """Frontend sent sunsupported data.
+    Will result in HTP 400 / Bad Request"""
+
+def check(**args):
+    return prov.provsys.check_consistency_local()
+
+def get_config(**args):
+    return dumps(prov.fetch_config())
+
+def get_static_file(**args):
+    return True
+
+def get_dynamic_file(**args):
+    return True
+
+def get_endpoints_file_dynamic(**args):
+    if 'file' not in args:
+        raise FrontendError("Missing file argument")
+    hier = args['file'].split('.', 1)
+    try:
+        if hier[-1] not in prov.fetch_config()['endpoints'][hier[0]]['files']['dynamic']:
+            raise KeyError
+    except KeyError:
+        raise FrontendError("Requested file unknown")
+
+    return prov.read_file("{}.{}".format(hier[0], hier[-1]))
+
+def _get_endpoints_file_static(file_name):
+    return prov.read_file(file_name)
+
+def _get_endpoints_file_dynamic(property_name):
+    prov.fetch_set()
+    return(prov.set[property_name])
+
+def get_endpoints_file(**args):
+    try:
+        type1, file1 = args['file'].split('/', 1)
+        hier = file1.split('.', 1)
+        if type1 == 'dynamic' and file1 in prov.provsys.get_dynamic_files():
+            return _get_endpoints_file_dynamic(file1)
+        if type1 == 'static' and file1 in prov.provsys.get_static_files():
+            return _get_endpoints_file_static(file1)
+        raise Exception() # nothing found
+    except:
+        raise FrontendError("Requested resource not found")
+
+
+def get_purgeCode(**args):
+    return prov.fetch_purgeCode()
+
+def set_done(**args):
+    #return prov.set_done(prod_id=args['prod_id'], fw_ver=args['fw_ver'])
+    return prov.set_done()
+
+def calls(call):
+    global prov
+    _calls = {
+        "/check": check,
+        "/getConfig": get_config,
+        "/getEndpointsFile": get_endpoints_file,
+        "/getPurgeCode": get_purgeCode,
+        "/setDone": set_done,
+    }
+    if call not in _calls:
+        raise provsys.ProvisioningError("Call not supported by this provisioning system")
+    return _calls.get(call)
+
+stdout.flush()
+try:
+    pathinfo = environ.get("PATH_INFO", "")
+    params = {}
+    form = cgi.FieldStorage()
+    for key in form.keys():
+        params[key] = form.getvalue(key)
+    try:
+        prov = provsys.Provisioning(params['dev_id'], params['prod_id'], params['fw_ver'])
+        #prov.set_dev_params(params['dev_id'], params['prod_id'], params['fw_ver'])
+    except KeyError:
+        raise FrontendError("Missing device arguments")
+    #prov.fetch_set()
+    resp = calls(pathinfo)(**params)
+    stdout.buffer.write(b"Status: 200 OK\r\n")
+    stdout.buffer.write(b"Content-Type: text/plain\r\n")
+    stdout.buffer.write(b"\r\n")
+    stdout.buffer.write(resp if type(resp) == bytes else bytes(resp, 'utf-8'))
+except FrontendError as e:
+    #e = exc_info()[0]
+    print(e, file=stderr)
+    stdout.buffer.write(b"Status: 400 BadRequest\r\n")
+    stdout.buffer.write(b"Content-Type: text/json\r\n")
+    stdout.buffer.write(b"\r\n")
+    stdout.buffer.write(bytes(dumps({'class': e.__class__.__name__ , 'msg': e.msg, 'verb': e.verb}), 'utf-8'))
+except provsys.ProvisioningError as e:
+    #e = exc_info()[0]
+    print(e, file=stderr)
+    stdout.buffer.write(b"Status: 500 ProvisioningError\r\n")
+    stdout.buffer.write(b"Content-Type: text/json\r\n")
+    stdout.buffer.write(b"\r\n")
+    stdout.buffer.write(bytes(dumps({'class': e.__class__.__name__ , 'msg': e.msg, 'verb': e.verb}), 'utf-8'))
+except provsys.ProvSysError as e:
+    #e = exc_info()[0]
+    print(e, file=stderr)
+    stdout.buffer.write(b"Status: 500 ProvSysError\r\n")
+    stdout.buffer.write(b"Content-Type: text/json\r\n")
+    stdout.buffer.write(b"\r\n")
+    stdout.buffer.write(bytes(dumps({'class': e.__class__.__name__ , 'msg': e.msg, 'verb': e.verb}), 'utf-8'))
+#except (TypeError, KeyError) as e: #TODO: too generic!
+#    print(e, file=stderr)
+#    print("Status: 400 YAPS_BadRequest")
+#    print("Content-Type: text/plain")
+#    print()
+#except Exception as e:
+#    print(e, file=stderr)
+#    print("Status: 500 Server Error")
+#    print("Content-Type: text/plain")
+#    print()
+#    print(e.__str__())
+#pr.disable()
+#s = io.StringIO()
+#sortby = 'cumulative'
+#ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+#ps.print_stats()
+#print(s.getvalue(), file=stderr)

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" type="text/css" href="assets/css/bootstrap.min.css" />
+    <style>
+      .busy {
+      border: 4px solid #f3f3f3; /* Light grey */
+      border-top: 4px solid;
+      border-radius: 50%;
+      margin-left: auto;
+      width: 40px;
+      height: 40px;
+      animation: spin 2s linear infinite;
+      }
+      .busy-blocking {
+      border: 20px solid #f3f3f3; /* Light grey */
+      border-top: 20px solid;
+      border-radius: 50%;
+      margin-left: auto;
+      margin-right: auto;
+      width: 200px;
+      height: 200px;
+      animation: spin 2s linear infinite;
+      }
+      @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+      }
+    </style>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/underscore-min.js"></script>
+    <script src="assets/js/popper.min.js"></script>
+    <script src="assets/js/bootstrap.min.js"></script>
+    <script src="assets/js/jquery-qrcode.min.js"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-light navbar-expand-md bg-light justify-content-md-center justify-content-start">
+      <img src="assets/img/logo.png" height="64px" />
+      <div class="navbar-collapse collapse justify-content-between align-items-center w-100">
+        <ul class="navbar-nav mx-auto text-md-center text-left">
+          <li class="nav-item my-auto">
+            <div class="h2">YAPS - Yet Another Provisioning System</div>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav flex-row justify-content-md-center justify-content-start flex-nowrap">
+          <li class="nav-item">
+            <span id="busy" class="navbar-text busy"></span>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <p>&nbsp;</p>
+    <p class="h3 container">Dashboard</p>
+    <hr />
+    <div id="busy-blocking" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="busy-blocking"></div>
+      </div>
+    </div>
+    <div id="error" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-warning text-white">
+            <h5 class="modal-title" id="err">Error</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div id="err_msg" class="modal-body" style="">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div id="c_modal">
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="text/template" id="t_modal_addSet">
+      <div class="modal-header">
+        <h5 class="modal-title">Manually add provisioning set to database</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="f_addSet" action="" method="POST" class="container">
+          <div class="row form-group">
+            <label for="addSet_id">ID</label>
+            <input type="text" id="addSet_id" name="id" class="form-control f_addSet" required>
+          </div>
+          <% _.each(data.dynamic, function(file) { %>
+            <div class="row form-group">
+              <div class="input-group">
+                <div class="custom-file">
+                  <input type="file" class="custom-file-input" id="input-<%- file %>" aria-describedby="inputAddon-<%- file %>" />
+                  <label class="custom-file-label" for="input-<%- file %>">Choose file</label>
+                </div>
+                <div class="input-group-append">
+                  <button class="btn btn-outline-secondary" type="button" id="inputAddon-<%- file %>">Button</button>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="a_addSet_send" type="button" class="btn btn-primary" data-dismiss="modal">Add</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+      </div>
+    </script>
+    <script type="text/template" id="t_modal_setDevID">
+      <div class="modal-header">
+        <h5 class="modal-title">Set device ID</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="f_setDevID" action="" method="POST" class="container">
+          <div class="row form-group">
+            <label for="setDevID_devid">Device ID</label>
+            <input type="text" id="setDevID_devid" class="form-control f_setDevID" name="dev_id" value="MAC:" required />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="a_setDevID_send" type="button" class="btn btn-primary" data-dismiss="modal">Save</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+      </div>
+    </script>
+    <script type="text/template" id="t_modal_setComment">
+      <div class="modal-header">
+        <h5 class="modal-title">Set comment</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="f_setComment" action="" method="POST" class="container">
+          <div class="row form-group">
+            <label for="setComment">Comment</label>
+            <textarea id="setComment" class="form-control f_setComment" name="comment"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="a_setComment_send" type="button" class="btn btn-primary" data-dismiss="modal">Save</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+      </div>
+    </script>
+    <script type="text/template" id="t_modal_showBarcode">
+      <div class="modal-header">
+          <h5 class="modal-title">Set as QR code</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body text-center">
+          <div id="qrcode">&nbsp;</div>
+        </div>
+    </script>
+    <script type="text/template" id="t_modal_actionMenu">
+      <div class="modal-header">
+        <h5 class="modal-title">Editing provisioning set: <i><%- item.id %></i></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- <button data-id="<%- item.id %>" type="button" class="a_set btn btn-block btn-light a_showBarcode" id="a_showBarcode_<%- item.id %>">Show barcode</button> -->
+        <button data-id="<%- item.id %>" type="button" class="a_set btn btn-light btn-block a_setComment" id="a_setComment_<%- item.id %>">Set comment</button>
+        <!-- <button data-id="<%- item.id %>" type="button" class="a_set btn btn-light btn-block a_print" id="a_print">Print labels</button> -->
+        <button data-id="<%- item.id %>" type="button" class="a_set btn btn-warning btn-block a_setDevID" id="a_setDevID_<%- item.id %>" <%= item.dev_id && 'disabled' %>>Map provisioning set to device</button>
+        <button data-id="<%- item.id %>" type="button" class="a_set btn btn-danger btn-block a_resetAssoc" id="a_resetAssoc_<%- item.id %>" <%= !item.dev_id && 'disabled' %>>Reset device mapping</button>
+      </div>
+    </script>
+
+    <div class="container" id="c_status">
+    </div>
+    <script type="text/template" id="t_status">
+      <% if(!data.local.initialized) { %>
+        <p>
+          <div class="card">
+            <h5 class="card-header">System messages</h5>
+            <div class="card-body">
+              System is not yet initialized!
+            </div>
+          </div>
+        </p>
+      <% } %>
+
+      <% if(data.local.devices.length) { %>
+        <p>
+          <div class="card">
+          <h5 class="card-header">Connected devices</h5>
+            <div class="card-body">
+              The following devices are currently connected to this provisioning system:
+              <hr />
+              <div class="container">
+                <ul class="list-group">
+                  <% _.each(data.local.devices, function(device) { %>
+                    <li id="dhcp_<%= device.id %>" class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="col"><%= device.ip %></div>
+                    <div class="col"><%= device.mac %></div>
+                    <div class="col"><%= device.name %></div>
+                    </li>
+                  <% }) %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </p>
+      <% } %>
+
+      <p>
+        <div class="card">
+          <h5 class="card-header">Import</h5>
+            <div class="card-body">
+              <% if(!data.mounted.import) { %>
+                To import new provisioning sets, connect a properly formatted USB storage device containing provisioning batch archives.
+              <% } else { %>
+                 The following provisioning batch archives were found - click to trigger import:
+                 <hr />
+                   <div class="container">
+                   <ul class="list-group">
+                     <% _.each(data.import, function(item) { %>
+                       <button id="<%= item.name %>" type="button" class="a_import list-group-item d-flex justify-content-between align-items-center" <%= item.imported && 'disabled' %>><%= item.name %><% if(item.imported) { %><span class="badge badge-pill">already imported</span><% } %></button>
+                     <% }) %>
+                   </ul>
+                 </div>
+              <% } %>
+            <hr />
+            <button id="a_addSet" type="button" class="btn btn-light" aria-haspopup="true" aria-expanded="false">Manually add provisioning set</button>
+          </div>
+        </div>
+      </p>
+
+      <p>
+        <div class="card">
+        <h5 class="card-header">Export/Backup</h5>
+        <div class="card-body">
+          <% if(!data.mounted.export) { %>
+            To export/backup the database, please attach a properly formatted USB storage device.
+          <% } else { %>
+            The following backups were found:
+            <hr />
+            <div class="container">
+              <ul class="list-group">
+                <% _.each(data.export, function(item) { %>
+                  <li id="<%= item %>" class="list-group-item d-flex justify-content-between align-items-center"><%= item %></li>
+                <% }) %>
+              </ul>
+            </div>
+            <hr />
+            <button type="button" class="a_export btn btn-light">Create Backup</button>
+          <% } %>
+        </div>
+        </div>
+      </p>
+    </script>
+
+    <div id="c_setsTable" class="container">
+    </div>
+    <script type="text/template" id="t_setsTable">
+      <p>
+        <div class="card">
+          <h5 class="card-header">Provisioning sets</h5>
+          <div class="card-body">
+            <% _.each(data, function(sets, batch) { %>
+              <h6>Batch: <i><%- batch.split('^')[0] %></i></h6>
+              <table class="table table-striped table-hover table-sm text-center">
+                <thead>
+                  <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Product ID</th>
+                    <th scope="col">Device ID</th>
+                    <th scope="col">FW Version</th>
+                    <th scope="col">Requested</th>
+                    <th scope="col">Completed</th>
+                    <th scope="col">Last downloaded on</th>
+                    <th scope="col">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody class="text-monospace" style="cursor:pointer;">
+                  <% _.each(sets, function(item) { %>
+                    <tr id="<%- item.id %>" data-id="<%- item.id %>" class="a_showActionMenu <%- item.dev_id && 'text-muted' %>" data-toggle="tooltip" data-placement="top" title="<%- item.comment %>">
+                      <th class="align-middle" scope="row"><%- item.id %></th>
+                      <td class="align-middle"><%- item.prod_id %></td>
+                      <td class="align-middle"><%- item.dev_id %></td>
+                      <td class="align-middle"><%- item.fw_ver %></td>
+                      <td class="align-middle"><%- item.downloaded_cnt ? Math.abs(item.downloaded_cnt) : '' %></td>
+                      <td class="align-middle"><%- item.downloaded_cnt ? (item.downloaded_cnt > 0 ? '✔' : '✘') : '' %></td>
+                      <td class="align-middle"><%= item.downloaded_dt && ('<time datetime="' + item.downloaded_dt + '">' + new Date(item.downloaded_dt).toLocaleString() + '</time>') %></td>
+                      <td class="align-middle"><div class="a_showComment" data-id="<%- item.id %>"><%- item.comment ? '💬' : '' %></div></td>
+                      <!-- <td class="align-middle"><button id="a_showActionMenu_<%- item.id %>" type="button" class="btn btn-secondary a_showActionMenu" data-id="<%- item.id %>">≡</button></td> -->
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            <% }) %>
+          </div>
+        </div>
+      </p>
+    </script>
+
+    <script type="text/javascript">
+      window.refresh = false;
+      window.xhr = null;
+      window.data = null;
+
+      function dtnow() {
+        return Math.round(Date.now() / 1000);
+      };
+
+      function ajaxError(resp, testStatus, error) {
+        window.refresh = false;
+
+        if (error != "abort") {
+          $('#error').modal({
+            'show': true,
+            'backdrop': 'static'
+          });
+          //if(resp && (resp.constructor === Array) && _.each(resp, function(err) { if(!err.code) { console.log("FAILED"); err = false; return false; }}) ) {
+          //if(resp.responseJSON && (resp.responseJSON.constructor === Array)) {
+          //  console.log(1);
+          //  $('#err_msg').html('<ul id="err_msg_lst"></ul>');
+          //  _.each(resp, function(err) {
+          //    $('#err_msg_lst').append('<li>' + '<b>'+err.code+'</b>' + '<hr /><div style="white-space: pre-line; font-family: monospace;">' + err.verbose + '</div></li>');
+          //  })
+          //} else if(resp.responseJSON && resp.responseJSON.class && resp.responseJSON.msg) {
+          if (resp.responseJSON && resp.responseJSON.class && resp.responseJSON.msg) {
+            resp = resp.responseJSON;
+            $('#err').html(resp.class);
+            if (resp.verb)
+              $('#err_msg').html('<div class="text-center">' + resp.msg + '</div>' + '<hr /><div class="text-monospace" style="white-space: pre-line;">' + resp.verb + '</div>');
+            else
+              $('#err_msg').html('<div class="text-center">' + resp.msg + '</div>');
+          } else if (resp.responseText) {
+            resp = resp.responseText;
+            $('#err_msg').html('<div class="text-monospace" style="white-space: pre-line;>' + resp + '</div>');
+          } else {
+            $('#err_msg').html("An unknown error occured!");
+          }
+        }
+      };
+
+      function status() {
+        var status_url = '/cgi/mgmt/status?dtnow=' + dtnow();
+        window.xhr = $.getJSON(status_url)
+          .done(function (data) {
+            //console.log("window.data: " + JSON.stringify(window.data));
+            //console.log("       data: " + JSON.stringify(data));
+            console.log(data);
+            if (!_.isEqual(window.data, data)) {
+              console.log("data mismatch");
+              window.data = data;
+              $('#c_status').html(_.template($('#t_status').html())({
+                'data': data
+              }));
+              $('#c_setsTable').html(_.template($('#t_setsTable').html())({
+                'data': _.groupBy(window.data.local.sets, set => set.batch)
+              }));
+            }
+          })
+          .fail(ajaxError);
+      };
+
+      $(document).on({
+        ajaxStart: function () {
+          window.refresh = false;
+          $('#busy').css('visibility', 'visible')
+        },
+        ajaxStop: function () {
+          window.refresh = true;
+          $('#busy').css('visibility', 'hidden')
+        },
+      });
+
+      $(document).on('click', '.a_showActionMenu', function (ev) {
+        console.log("MENU");
+        console.log($(ev.currentTarget).data('id'));
+        window.xhr.abort();
+        $('#c_modal').html(_.template($('#t_modal_actionMenu').html())({
+          'item': window.data.local.sets.find(obj => {
+            return obj.id === $(ev.currentTarget).data('id')
+          })
+        }));
+        $('#modal').modal('show');
+      });
+
+      $(document).on('click', '.a_import', function (ev) {
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            url: '/cgi/mgmt/import?dtnow=' + dtnow() + '&batch=' + ev.target.id
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide()
+          });
+      });
+
+      $(document).on('click', '#a_addSet', function (ev) {
+        alert("Not yet implemented");
+        //window.xhr.abort()
+        //$('#c_modal').html(_.template($('#t_modal_addSet').html())({'data': window.data.local.files}));
+        //$('#modal').modal('show');
+      });
+
+      //$(document).on('click', '.a_set', function(ev) {
+      //  window.xhr.abort()
+      //  $('#c_modal').html(_.template($('#t_modal_modifySet').html())());
+      //  $('#modal').modal('show');
+      //});
+
+      $(document).on('click', '.a_setComment', function (ev) {
+        window.xhr.abort();
+        $('#c_modal').html(_.template($('#t_modal_setComment').html())());
+        $('#a_setComment_send').data('id', $(ev.target).data('id'));
+        $('#modal').modal('show');
+      });
+
+      $(document).on('click', '#a_setComment_send', function (ev) {
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            type: 'POST',
+            url: '/cgi/mgmt/setComment?id=' + $(ev.target).data('id') + '&dtnow=' + dtnow(),
+            data: $('#f_setComment').serialize(),
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide()
+          });
+      });
+
+      $(document).on('click', '.a_setDevID', function (ev) {
+        window.xhr.abort();
+        $('#c_modal').html(_.template($('#t_modal_setDevID').html())());
+        $('#a_setDevID_send').data('id', $(ev.currentTarget).data('id'));
+        $('#modal').modal('show');
+      });
+
+      $(document).on('click', '#a_setDevID_send', function (ev) {
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            type: 'POST',
+            url: '/cgi/mgmt/setDevID?id=' + $(ev.currentTarget).data('id') + '&dtnow=' + dtnow(),
+            data: $('#f_setDevID').serialize(),
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide();
+            $('#modal').modal('hide');
+          });
+      });
+
+      $(document).on('click', '.a_resetAssoc', function (ev) {
+        if (confirm("Do you *really* want to reset the mapping for this (ID: " + $(ev.currentTarget).data('id') + ") provisioning set?\nYou should only do so, if you are absolutely sure, this set of provisioning information is not in use anymore!")) {
+          $('#busy-blocking').show();
+          window.xhr.abort();
+          window.xhr = $.ajax({
+              url: '/cgi/mgmt/reset?id=' + $(ev.currentTarget).data('id') + '&dtnow=' + dtnow(),
+            })
+            .done(status)
+            .fail(ajaxError)
+            .always(function () {
+              $('#busy-blocking').hide();
+              $('#modal').modal('hide');
+            });
+        }
+      });
+
+      //$(document).on('click', '.a_showBarcode', function(ev) {
+      //  $('#c_modal').html(_.template($('#t_modal_showBarcode').html())({'item': window.data.local.sets.find(obj => {return obj.id === $(ev.currentTarget).data('id')})}));
+      //  var prov_set = window.data.local.sets.find(obj => {return obj.id === $(ev.currentTarget).data('id')});
+      //  console.log($('#qrcode').width(), $('#qrcode').height());
+      //  $('#qrcode').qrcode({size: $('#qrcode').width(), text: JSON.stringify(prov_set)});
+      //  $('#modal').modal('show');
+      //});
+
+      $(document).on('click', '.a_export', function (ev) {
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            url: '/cgi/mgmt/export?dtnow=' + dtnow(),
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide();
+            $('#modal').modal('hide');
+          });
+      });
+
+      $(document).on('click', '.a_print', function (ev) {
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            url: '/cgi/mgmt/print?id=' + $(ev.target).data('id') + '&dtnow=' + dtnow(),
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide();
+            $('#modal').modal('hide');
+          });
+      });
+
+      $(document).on('click', '#a_addSet_send', function (ev) {
+        console.log($('#f_addSet').serialize());
+        $('#busy-blocking').show();
+        window.xhr.abort()
+        window.xhr = $.ajax({
+            type: 'POST',
+            url: '/cgi/mgmt/addSet?dtnow=' + dtnow(),
+            data: $('#f_addSet').serialize(),
+          })
+          .done(status)
+          .fail(ajaxError)
+          .always(function () {
+            $('#busy-blocking').hide();
+            $('#modal').modal('hide');
+          });
+      });
+
+      $(document).on('change', '.f_addSet', function () {
+        if ($('#addSet_file').val()) {
+          var reader = new FileReader();
+          var id = $('#addSet_file').val().replace(/C:\\fakepath\\/i, '').replace(/\.pem/i, '');
+          var file = document.querySelector('input[type=file]').files[0];
+          reader.readAsText(file)
+          $('#addSet_id').val(id);
+          //$('#addSet_set').prop('disabled', true);
+          reader.onload = function (e) {
+            $('#addSet_set').val(reader.result);
+          }
+        }
+      });
+
+      $(function () {
+        $('#busy-blocking').show()
+        status();
+        $('#busy-blocking').hide()
+        setInterval(function () {
+          if (window.refresh)
+            status();
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>
