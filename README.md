@@ -1,10 +1,26 @@
-![logo](.README/logo.png)
+# YAPS - Yet Another Provisioning System ![logo](.README/logo.png)
 
-# YAPS - Yet Another Provisioning System
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
 
-## Introduction
+- [YAPS - Yet Another Provisioning System](#yaps---yet-another-provisioning-system)
+  - [Buzzword summary](#buzzword-summary)
+  - [Purpose](#purpose)
+  - [Management web interface](#management-web-interface)
+  - [Installation](#installation)
+  - [Starting with an endpoints config file](#starting-with-an-endpoints-config-file)
+  - [Setup and usage guidelines](#setup-and-usage-guidelines)
+  - [Import format](#import-format)
+  - [HTTP API description](#http-api-description)
+  - [FAQ](#faq)
+  - [Credits](#credits)
 
-YAPS was designed to incoroprate all kinds of major buzzwords in its README:
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Buzzword summary
+
+YAPS was designed to incorporate all kinds of major buzzwords into its README:
 
  - flexible (data columns are created dynamically and content is treated as raw bytes)
  - secure (tried to make it as hard as possible to screw up the system, by implementing consistency checks everywhere and calling them every time)
@@ -41,25 +57,6 @@ The web interface is not needed for the actual process of provision client (as l
 More features to come..
 
 ![logo](.README/web.png)
-
-## General idea / Setup guidelines / Hints
-
-An idea is that the hardware running YAPS is a small embedded device, featuring USB ports and - depending on the type of to be provisioned client devices - ethernet.
-
-That's where the "runs on OpenWrt"-feature originates from - a cheap WiFi-router (with disabled WiFi) works perfectly fine as underlying hardware.
-
-As quite some IoT devices don't feature ethernet connectivity anymore (but only WiFi - and WiFi is a notoriously bad idea to use for transporting initial, precious and confidential provisioning information to a device) I came up with using PPPoS (PPP over Serial/UART).
-
-In practice that means, that I provision my ESP8266 development board via YAPS over HTTP over IP over UART over USB. Well, it does the job.
-
-Following up on the general idea, the actual provisioning data is stored on external media, let's say USB thumb drives - not on the system running YAPS itself.
-
-Each such drive is dedicated to a particular infrastructure/project.
-
-That way, depending for which infrastructure/project you'd want to provision clients, you'd just insert/swap respective drives.
-
-Also batches of (additional) provisioning sets should be stored and imported via external media, dedicated for the sole purpose of importing batches.
-Same goes for backups.
 
 
 ## Installation
@@ -127,6 +124,26 @@ Such an `endpoints.json`-file could look like:
 Files listed in `endpoints.*.files` can be eventually requested via the `getEndpointsFile` API call (see HTTP API description).
 
 
+## Setup and usage guidelines
+
+An idea is that the hardware running YAPS is a small embedded device, featuring USB ports and - depending on the type of to be provisioned client devices - ethernet.
+
+That's where the "runs on OpenWrt"-feature originates from - a cheap WiFi-router (with disabled WiFi) works perfectly fine as underlying hardware.
+
+As quite some IoT devices don't feature ethernet connectivity anymore (but only WiFi - and WiFi is a notoriously bad idea to use for transporting initial, precious and confidential provisioning information to a device) I came up with using PPPoS (PPP over Serial/UART).
+
+In practice that means, that I provision my ESP8266 development board via YAPS over HTTP over IP over UART over USB. Well, it does the job.
+
+Following up on the general idea, the actual provisioning data is stored on external media, let's say USB thumb drives - not on the system running YAPS itself.
+
+Each such drive is dedicated to a particular infrastructure/project.
+
+That way, depending for which infrastructure/project you'd want to provision clients, you'd just insert/swap respective drives.
+
+Also batches of (additional) provisioning sets should be stored and imported via external media, dedicated for the sole purpose of importing batches.
+Same goes for backups.
+
+
 ## Import format
 
 Data can be imported via properly formatted tar({.gz,bz2})-archives, following a file structure, probably also illustrated best by an example matching above `endpoints.json` structure:
@@ -167,9 +184,9 @@ All HTTP API calls *must* provide the following CGI arguments:
 
 HTTP API:
  - `check`
-   - Desc: Check connection and if there's a free/unassigned or with client's `dev_id` associated set
+   - Desc: Trigger a consistency check on server side - does not allocate a provisioning set yet
  - `getConfig`
-   - Desc: Fetch `endpoints.json` config file
+   - Desc: Assigns a (free) provisioning set (if not happened for this client already), fetch `endpoints.json` config file
  - `getHash`
    - Desc: Fetch a hash created over `secret` and `dev_id` which could be stored on the client in order to identify/verify the provisioning infrastructure at a later state
  - `getEndpointsFile`
@@ -177,7 +194,7 @@ HTTP API:
    - Argument: `file` (filename prefixed with type)
      - E.g.: `static/mqtt.ca.crt`, `dynamic/mqtt.crt`, `dynamic/random`
  - `setDone`
-   - Desc: Let the YAPS system know the client considers itself being successfully provisioned
+   - Desc: Let the YAPS system know the client considers its provisioning process being completed
 
 Full example, given YAPS is initialized with a configuration similar to above:
  1. `http://host/cgi/prov/check?prod_id=FANCY_PROD_NAME&fw_ver=ALPHA&dev_id=DE:AD:BE:EF`
@@ -191,8 +208,7 @@ Full example, given YAPS is initialized with a configuration similar to above:
 Actually nobody raised those questions as this FAQ is part of the very first commit in this repository, but I'm happy to answer them anyway:
 
  - Your HTML/JavaScript code is awful, that's not how you do things, especially not in 2019!
-   - That's not even a question! But you're right. I'm not a frontend developer and after having read [this](https://hackernoon.com/how-it-feels-to-learn-javascript-in-2016-d3a717dd577f) I don't intend to become one (and the article is from 2016!).
-   Contributions of any kind are highly appreciated though!
+   - That's not even a question! But you're right. I'm not a frontend developer and after having read [this](https://hackernoon.com/how-it-feels-to-learn-javascript-in-2016-d3a717dd577f) I don't intend to become one (and the article is from 2016!). If you want to make it better you're more than welcome!
 
  - The web interface looks shit, it's all black/white/grey - are you color blind?!
    - Yes.
