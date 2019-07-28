@@ -57,10 +57,6 @@ def get_endpoints_file(**args):
     except:
         raise FrontendError("Requested resource not found")
 
-
-def get_purgeCode(**args):
-    return prov.fetch_purgeCode()
-
 def set_done(**args):
     #return prov.set_done(prod_id=args['prod_id'], fw_ver=args['fw_ver'])
     return prov.set_done()
@@ -71,7 +67,6 @@ def calls(call):
         "/check": check,
         "/getConfig": get_config,
         "/getEndpointsFile": get_endpoints_file,
-        "/getPurgeCode": get_purgeCode,
         "/setDone": set_done,
     }
     if call not in _calls:
