@@ -28,7 +28,7 @@ LOCAL_PATH              = PREFIX + '/PROV/'
 #LOCAL_PATH_SETS        = LOCAL_PATH + "sets/" # only used if sets are stored on filesystem instead of database
 LOCAL_PATH_PROVCFG      = LOCAL_PATH + PROVCFG
 LOCAL_PATH_DB           = LOCAL_PATH + "sets.db"
-LOCAL_PATH_RAND         = LOCAL_PATH + SECRET
+LOCAL_PATH_SECRET       = LOCAL_PATH + SECRET
 
 IN_PATH             = PREFIX + "/IMPORT/"
 #IN_PATH_SETS        = IN_PATH + "sets/" # trailing slash required!
@@ -313,7 +313,7 @@ class ProvSystem():
         with tarfile.open(IN_PATH + batch) as tar_fd:
             with open(LOCAL_PATH_PROVCFG, 'wb') as fd:
                 fd.write(tar_fd.extractfile(tar_fd.getmember(PROVCFG)).read())
-            with open(LOCAL_PATH_RAND, 'wb') as fd:
+            with open(LOCAL_PATH_SECRET, 'wb') as fd:
                 fd.write(tar_fd.extractfile(tar_fd.getmember(SECRET)).read())
             self.parse_config()
             for _endpoint_key, _endpoint_val in self.cfg['endpoints'].items():
@@ -391,7 +391,7 @@ class ProvSystem():
         set1 = self.sql.fetchone()
         if set1:
             set1 =  dict(zip(set1.keys(), set1))
-            set1['purge_code'] = sha256(self.dev_id.encode('utf-8') + self.read_file(LOCAL_PATH_RAND, binary=True)).hexdigest()
+            set1['purge_code'] = sha256(self.dev_id.encode('utf-8') + self.read_file(LOCAL_PATH_SECRET, binary=True)).hexdigest()
         return set1
 
     def completed_set(self):
