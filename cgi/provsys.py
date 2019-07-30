@@ -148,6 +148,9 @@ class ProvSystem():
         if not (isfile(path) and getsize(path)):
             raise exc_cls("{}: expected to be an existing, non-empty, regular file".format(path))
 
+    def get_project_name(self):
+        return self.cfg['project']
+
     def get_dynamic_files(self):
         files = []
         for endpoint_key, endpoint_val in self.cfg['endpoints'].items():

@@ -67,6 +67,7 @@ def status():
                 free += 1
 
     res = {
+        'project': prov.get_project_name(),
         'mounted': {
             #'prov': block.mounted(fslabel="PROV").
             'import': OPENWRT and block.mounted(fslabel="IMPORT") or True,

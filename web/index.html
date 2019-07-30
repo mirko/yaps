@@ -184,16 +184,20 @@
     <div class="container" id="c_status">
     </div>
     <script type="text/template" id="t_status">
-      <% if(!data.local.initialized) { %>
         <p>
           <div class="card">
             <h5 class="card-header">System messages</h5>
+            <% if(data.local.initialized) { %>
             <div class="card-body">
-              System is not yet initialized!
+	      Project: <i><%= data.project %></i>
             </div>
+            <% } else { %>
+            <div class="card-body">
+              System is not yet initialized - do so by first import.
+            </div>
+            <% } %>
           </div>
         </p>
-      <% } %>
 
       <% if(data.local.devices.length) { %>
         <p>
