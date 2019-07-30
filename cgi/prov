@@ -39,6 +39,8 @@ def get_endpoints_file_dynamic(**args):
     return prov.read_file("{}.{}".format(hier[0], hier[-1]))
 
 def _get_endpoints_file_static(file_name):
+    if file_name == 'secret':
+        raise FrontendError("Requested protected file")
     return prov.read_file(file_name)
 
 def _get_endpoints_file_dynamic(property_name):
