@@ -180,9 +180,9 @@ class ProvSystem():
     def check_consistency_incoming_batch(self, batch):
         try:
             tar_fd = tarfile.open(IN_PATH + batch, 'r')
-            tar_members = tar_fd.getnames()
-            assert("sets" in tar_members)
+            tar_members = [ mem.strip('./') for mem in tar_fd.getnames() ]
             assert(PROVCFG in tar_members)
+            assert("sets" in tar_members)
         except:
             raise IncomingIntegrityError("{}: expected it being a stage2 provisioning import archive".format(IN_PATH + batch))
 
@@ -276,8 +276,9 @@ class ProvSystem():
             raise Uninitialized()
 
         with tarfile.open(IN_PATH + batch) as tar_fd:
-            if not self.diff_cfg(tar_fd.extractfile(PROVCFG)):
-                raise IncomingIntegrityError("{} vs {}: To be imported provisioning config file incompatible to current one".format(LOCAL_PATH_PROVCFG, "{}|stage2.prov.json".format(batch), LOCAL_PATH_PROVCFG))
+            prfx = './' if '.' in tar_fd.getnames() else ''
+            if not self.diff_cfg(tar_fd.extractfile("{}{}".format(prfx, PROVCFG))):
+                raise IncomingIntegrityError("{} vs {}: To be imported provisioning config file incompatible to current one".format(LOCAL_PATH_PROVCFG, "{}|endpoints.json".format(batch), LOCAL_PATH_PROVCFG))
 
         # although this method would throw an exception if it fails, we still
         # need to return True if it doesn't, to make logical constructs like
@@ -311,14 +312,15 @@ class ProvSystem():
         if not exists(LOCAL_PATH):
             makedirs(LOCAL_PATH)
         with tarfile.open(IN_PATH + batch) as tar_fd:
+            prfx = './' if '.' in tar_fd.getnames() else ''
             with open(LOCAL_PATH_PROVCFG, 'wb') as fd:
-                fd.write(tar_fd.extractfile(tar_fd.getmember(PROVCFG)).read())
+                fd.write(tar_fd.extractfile(tar_fd.getmember("{}{}".format(prfx, PROVCFG))).read())
             with open(LOCAL_PATH_SECRET, 'wb') as fd:
-                fd.write(tar_fd.extractfile(tar_fd.getmember(SECRET)).read())
+                fd.write(tar_fd.extractfile(tar_fd.getmember("{}{}".format(prfx, SECRET))).read())
             self.parse_config()
             for _endpoint_key, _endpoint_val in self.cfg['endpoints'].items():
                 for static_file in self.get_static_files():
-                            member = tar_fd.getmember(static_file)
+                            member = tar_fd.getmember("{}{}".format(prfx, static_file))
                             with open("{}{}".format(LOCAL_PATH, static_file), 'wb') as fd:
                                 fd.write(tar_fd.extractfile(member).read())
         self.initialize_db()
@@ -358,12 +360,13 @@ class ProvSystem():
             raise IncomingIntegrityError("{}: Batch already imported".format(batch))
 
         with tarfile.open(IN_PATH + batch) as tar_fd:
+            prfx = './' if '.' in tar_fd.getnames() else ''
             for file_in_tar in tar_fd.getmembers():
                 set1 = {}
-                if file_in_tar.name.startswith("sets/") and file_in_tar.name.count('/') == 1: #TODO: find a way to only extract files in desired subdirectories - this is quite hackish
-                    _name = file_in_tar.name.split('sets/')[1]
+                if file_in_tar.name.startswith('{}sets/'.format(prfx)) and (file_in_tar.name.count('/') == 1): #TODO: find a way to only extract files in desired subdirectories - this is quite hackish
+                    _name = file_in_tar.name.split('{}sets/'.format(prfx))[1]
                     for dyn_file in self.get_dynamic_files():
-                        set1[dyn_file] = tar_fd.extractfile("{}/{}".format(file_in_tar.name, dyn_file)).read()
+                        set1[dyn_file] = tar_fd.extractfile("{}sets/{}/{}".format(prfx, _name, dyn_file)).read()
                     self.sql.execute("INSERT INTO `sets` ({} `id`, `batch`) VALUES({} ?, ?)".format(
                             ''.join(('`{}`, '.format(k)) for k in set1),
                             '?, '*len(set1)
