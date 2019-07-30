@@ -229,13 +229,14 @@
               <% if(!data.mounted.import) { %>
                 To import new provisioning sets, connect a properly formatted USB storage device containing provisioning batch archives.
               <% } else { %>
-                 The following provisioning batch archives were found - click to trigger import:
+                 The following provisioning batches were found - click to import:
                  <hr />
                    <div class="container">
-                   <ul class="list-group">
-                     <% _.each(data.import, function(item) { %>
-                       <button id="<%= item.name %>" type="button" class="a_import list-group-item d-flex justify-content-between align-items-center" <%= item.imported && 'disabled' %>><%= item.name %><% if(item.imported) { %><span class="badge badge-pill">already imported</span><% } %></button>
-                     <% }) %>
+		     <% if(!data.import.length) { %><i>(none)</i><% } %>
+                     <ul class="list-group">
+                       <% _.each(data.import, function(item) { %>
+                         <button id="<%= item.name %>" type="button" class="a_import list-group-item d-flex justify-content-between align-items-center" <%= item.imported && 'disabled' %>><%= item.name %><% if(item.imported) { %><span class="badge badge-pill">already imported</span><% } %></button>
+                       <% }) %>
                    </ul>
                  </div>
               <% } %>
@@ -255,6 +256,7 @@
             The following backups were found:
             <hr />
             <div class="container">
+	      <% if(!data.export.length) { %><i>(none)</i><% } %>
               <ul class="list-group">
                 <% _.each(data.export, function(item) { %>
                   <li id="<%= item %>" class="list-group-item d-flex justify-content-between align-items-center"><%= item %></li>
