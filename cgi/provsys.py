@@ -437,6 +437,9 @@ class Provisioning():
         if not self.set:
             raise NoFree("No unassigned provisioning sets available")
 
+    def fetch_hash(self):
+        return sha256(self.provsys.dev_id.encode('utf-8') + self.provsys.read_file(LOCAL_PATH_SECRET, binary=True)).hexdigest()
+
     def fetch_config(self):
         self.fetch_set(True)
         return self.cfg

@@ -17,6 +17,9 @@ class FrontendError(provsys.ProvSysError):
 def check(**args):
     return prov.provsys.check_consistency_local()
 
+def get_hash(**args):
+    return prov.fetch_hash()
+
 def get_config(**args):
     return dumps(prov.fetch_config())
 
@@ -67,6 +70,7 @@ def calls(call):
     global prov
     _calls = {
         "/check": check,
+        "/getHash": get_hash,
         "/getConfig": get_config,
         "/getEndpointsFile": get_endpoints_file,
         "/setDone": set_done,
