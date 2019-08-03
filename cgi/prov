@@ -72,7 +72,7 @@ def calls(call):
         "/check": check,
         "/getHash": get_hash,
         "/getConfig": get_config,
-        "/getEndpointsFile": get_endpoints_file,
+        "/getFile": get_endpoints_file,
         "/setDone": set_done,
     }
     if call not in _calls:
