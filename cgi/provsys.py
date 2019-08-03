@@ -244,7 +244,7 @@ class ProvSystem():
                 dyn_files = self.get_dynamic_files()
                 for dyn_file in dyn_files:
                     if not dyn_file in columns:
-                        raise Exception()
+                        raise LocalIntegrityError("{}: no such column in database".format(dyn_file))
             except Exception as exc:
                 return exc
 
