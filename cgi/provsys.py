@@ -58,16 +58,27 @@ class SQLConn:
 
     def connect(self):
         self.sql_conn = sqlite3.connect(LOCAL_PATH_DB)
+        self.sql_conn.isolation_level = None
         self.sql_conn.row_factory = sqlite3.Row
         self.sql_cur = self.sql_conn.cursor()
         self.connected = True
 
-    def execute(self, query, values = ()):
+    def execute(self, query, values = (), commit = True):
         if not self.connected:
             self.connect()
         log.debug("SQL query to be executed (query/values): {} / {}".format(query, values))
         self.sql_cur.execute(query, values)
-        self.sql_conn.commit()
+        if commit:
+            self.sql_conn.commit()
+
+    def begin(self):
+        self.sql_cur.execute("BEGIN")
+
+    def rollback(self):
+        self.sql_cur.execute("ROLLBACK")
+
+    def commit(self):
+        self.sql_cur.execute("COMMIT")
 
     def fetchone(self):
         return self.sql_cur.fetchone()
@@ -361,19 +372,25 @@ class ProvSystem():
 
         with tarfile.open(IN_PATH + batch) as tar_fd:
             prfx = './' if '.' in tar_fd.getnames() else ''
-            for file_in_tar in tar_fd.getmembers():
-                set1 = {}
-                if file_in_tar.name.startswith('{}sets/'.format(prfx)) and (file_in_tar.name.count('/') == 1): #TODO: find a way to only extract files in desired subdirectories - this is quite hackish
-                    _name = file_in_tar.name.split('{}sets/'.format(prfx))[1]
-                    for dyn_file in self.get_dynamic_files():
-                        set1[dyn_file] = tar_fd.extractfile("{}sets/{}/{}".format(prfx, _name, dyn_file)).read()
-                    self.sql.execute("INSERT INTO `sets` ({} `id`, `batch`) VALUES({} ?, ?)".format(
-                            ''.join(('`{}`, '.format(k)) for k in set1),
-                            '?, '*len(set1)
-                        ),
-                        (*set1.values(), _name, batch)
-                        #tuple(set1.values()) + (_name, batch)
-                    )
+            self.sql.begin()
+            try:
+                for file_in_tar in tar_fd.getmembers():
+                    set1 = {}
+                    if file_in_tar.name.startswith('{}sets/'.format(prfx)) and (file_in_tar.name.count('/') == 1): #TODO: find a way to only extract files in desired subdirectories - this is quite hackish
+                        _name = file_in_tar.name.split('{}sets/'.format(prfx))[1]
+                        for dyn_file in self.get_dynamic_files():
+                            set1[dyn_file] = tar_fd.extractfile("{}sets/{}/{}".format(prfx, _name, dyn_file)).read()
+                        self.sql.execute("INSERT INTO `sets` ({} `id`, `batch`) VALUES({} ?, ?)".format(
+                                ''.join(('`{}`, '.format(k)) for k in set1),
+                                '?, '*len(set1)
+                            ),
+                            (*set1.values(), _name, batch),
+                            commit = False,
+                            #tuple(set1.values()) + (_name, batch)
+                        )
+                self.sql.commit()
+            except:
+                self.sql.rollback()
 
     def set_dev_params(self, dev_id, prod_id, fw_ver):
         self.dev_id = dev_id
