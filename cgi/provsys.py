@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 PREFIX = '/PROV'
 
-PROVCFG = "endpoints.json"
+PROVCFG = "config.json"
 SECRET  = "secret"
 
 LOCAL_PATH              = PREFIX + '/PROV/'
@@ -278,7 +278,7 @@ class ProvSystem():
         with tarfile.open(IN_PATH + batch) as tar_fd:
             prfx = './' if '.' in tar_fd.getnames() else ''
             if not self.diff_cfg(tar_fd.extractfile("{}{}".format(prfx, PROVCFG))):
-                raise IncomingIntegrityError("{} vs {}: To be imported provisioning config file incompatible to current one".format(LOCAL_PATH_PROVCFG, "{}|endpoints.json".format(batch), LOCAL_PATH_PROVCFG))
+                raise IncomingIntegrityError("{} vs {}: To be imported provisioning config file incompatible to current one".format(LOCAL_PATH_PROVCFG, "{}|config.json".format(batch), LOCAL_PATH_PROVCFG))
 
         # although this method would throw an exception if it fails, we still
         # need to return True if it doesn't, to make logical constructs like

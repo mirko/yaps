@@ -9,7 +9,7 @@
   - [Purpose](#purpose)
   - [Management web interface](#management-web-interface)
   - [Installation](#installation)
-  - [Starting with an endpoints config file](#starting-with-an-endpoints-config-file)
+  - [Starting with a config file](#starting-with-a-config-file)
   - [Setup and usage guidelines](#setup-and-usage-guidelines)
   - [Import format](#import-format)
   - [HTTP API description](#http-api-description)
@@ -76,14 +76,14 @@ $PREFIX/EXPORT
 where `PROV`, `IMPORT`, `EXPORT` are directories recommended to be mount-points -- see "General idea / Setup guidelines / Hints" for further info on this.
 
 
-## Starting with an endpoints config file
+## Starting with a config file
 
-Base of YAPS is a static, infrastructure/project specific `endpoints.json`-file, from which the environment will be initialized (and pinned to).
+Base of YAPS is a static, infrastructure/project specific `config.json`-file, from which the environment will be initialized (and pinned to).
 
 That file is also going to be transferred to and used by the client so it's aware of the structure, hence, being able to make the respective API calls to retrieve provisioning information.
 Also it could/should be also used by whatever software is running on the client to retrieve stored connection endpoint information.
 
-Such an `endpoints.json`-file could look like:
+Such an `config.json`-file could look like:
 ```
 {
   "version": 1,
@@ -121,7 +121,7 @@ Such an `endpoints.json`-file could look like:
 }
 ```
 
-Files listed in `endpoints.*.files` can be eventually requested via the `getEndpointsFile` API call (see HTTP API description).
+Files listed in `config.json` can be eventually requested via the `getFile` API call (see HTTP API description).
 
 
 ## Setup and usage guidelines
@@ -146,9 +146,9 @@ Same goes for backups.
 
 ## Import format
 
-Data can be imported via properly formatted tar({.gz,bz2})-archives, following a file structure, probably also illustrated best by an example matching above `endpoints.json` structure:
+Data can be imported via properly formatted tar({.gz,bz2})-archives, following a file structure, probably also illustrated best by an example matching above `config.json` structure:
 ```
-./endpoints.json
+./config.json
 ./secret
 ./ota.ca.crt
 ./ota.sig.sub
@@ -172,7 +172,7 @@ Instead YAPS provides a special API call named `getHash`, which returns a sha256
 That way the client can ensure it's connected to the exact provisioning infrastructure it was initially provisioned with and only then allow particular alterations (e.g. deprovisioning).
 This file is also used to distinguish infrastructures*</sub>
 
-(Additional) sets of dynamic files can be imported on demand, however once the system was initialized via its very first import, further import archives must provide the same static data (`secret` and `endpoints.json` to be precise).
+(Additional) sets of dynamic files can be imported on demand, however once the system was initialized via its very first import, further import archives must provide the same static data (`secret` and `config.json` to be precise).
 This is to ensure consistency, so projects/infrastructures don't get mixed up.
 
 ## HTTP API description
@@ -186,7 +186,7 @@ HTTP API:
  - `check`
    - Desc: Trigger a consistency check on server side - does not allocate a provisioning set yet
  - `getConfig`
-   - Desc: Assigns a (free) provisioning set (if not happened for this client already), fetch `endpoints.json` config file
+   - Desc: Assigns a (free) provisioning set (if not happened for this client already), fetch `config.json` config file
  - `getHash`
    - Desc: Fetch a hash created over `secret` and `dev_id` which could be stored on the client in order to identify/verify the provisioning infrastructure at a later state
  - `getEndpointsFile`
