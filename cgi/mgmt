@@ -67,7 +67,6 @@ def status():
                 free += 1
 
     res = {
-        'project': prov.get_project_name(),
         'mounted': {
             #'prov': block.mounted(fslabel="PROV").
             'import': OPENWRT and block.mounted(fslabel="IMPORT") or True,
@@ -76,6 +75,7 @@ def status():
         },
         'local': {
             'initialized': init,
+            'project': init and prov.get_project_name(),
             'files': init and {'static': prov.get_static_files(), 'dynamic': prov.get_dynamic_files()},
             'sets': prov.check_consistency_local() and sets or [], # sets and ((OPENWRT and block.mounted(fslabel="PROV")) and prov.check_consistency_local()),
             'total': total,
