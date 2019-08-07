@@ -182,6 +182,6 @@ except provsys.ProvSysError as e:
 #    print(e.__str__())
 except Exception as e:
     print("Status: 500 Server Error")
-    print("Content-Type: text/html")
+    print("Content-Type: text/plain")
     print()
     raise
