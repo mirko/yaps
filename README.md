@@ -213,6 +213,11 @@ Actually nobody raised those questions as this FAQ is part of the very first com
  - The web interface looks shit, it's all black/white/grey - are you color blind?!
    - Yes.
 
+## Caveats
+
+YAPS uses certain sqlite features potentially not available in the sqlite binaries you're using and/or your distribution is shipping.
+That in particular includes `LIMIT` and `ORDER` on `UPDATE` commands.
+That functionality can be enable via '-DSQLITE_ENABLE_UPDATE_DELETE_LIMIT=1' at compile time.
 
 ## Credits
 
