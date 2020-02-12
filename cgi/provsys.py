@@ -3,7 +3,7 @@
 import sys
 sys.path.append('/usr/local/share/micropython')
 
-from os import listdir, makedirs
+from os import listdir, makedirs, remove
 #from os.path import exists, isdir, isfile, getsize, basename, splitext, dirname, realpath
 from os.path import exists, isdir, isfile, getsize, basename, dirname
 from hashlib import sha256
@@ -127,6 +127,7 @@ class ProvSystem():
         if not exists(LOCAL_PATH):
             makedirs(LOCAL_PATH)
         self.sql = SQLConn()
+        self.cfg = {}
 
         #if not exists(LOCAL_PATH_IMPORTED):
         #    with open(LOCAL_PATH_IMPORTED, "w") as f: f.write("")
@@ -326,14 +327,17 @@ class ProvSystem():
             prfx = './' if '.' in tar_fd.getnames() else ''
             with open(LOCAL_PATH_PROVCFG, 'wb') as fd:
                 fd.write(tar_fd.extractfile(tar_fd.getmember("{}{}".format(prfx, PROVCFG))).read())
+            self.parse_config()
             with open(LOCAL_PATH_SECRET, 'wb') as fd:
                 fd.write(tar_fd.extractfile(tar_fd.getmember("{}{}".format(prfx, SECRET))).read())
-            self.parse_config()
             for _endpoint_key, _endpoint_val in self.cfg['endpoints'].items():
                 for static_file in self.get_static_files():
-                            member = tar_fd.getmember("{}{}".format(prfx, static_file))
-                            with open("{}{}".format(LOCAL_PATH, static_file), 'wb') as fd:
-                                fd.write(tar_fd.extractfile(member).read())
+                    try:
+                        member = tar_fd.getmember("{}{}".format(prfx, static_file))
+                    except:
+                        raise IncomingIntegrityError("File referenced in config but wasn't found in archive", "{}{}".format(prfx, static_file))
+                    with open("{}{}".format(LOCAL_PATH, static_file), 'wb') as fd:
+                        fd.write(tar_fd.extractfile(member).read())
         self.initialize_db()
 
     def is_batch_already_imported(self, batch):
@@ -360,10 +364,34 @@ class ProvSystem():
             raise Uninitialized("Before importing single sets, the system needs to be initialized with metadata for a particular provisioning infrastructure")
         raise NotImplemented()
 
+    def reset(self):
+        for _endpoint_key, _endpoint_val in self.cfg['endpoints'].items():
+            for static_file in self.get_static_files():
+                try:
+                    remove("{}{}".format(LOCAL_PATH, static_file))
+                except:
+                    pass
+        try:
+            remove(LOCAL_PATH_PROVCFG)
+        except:
+            pass
+        try:
+            remove(LOCAL_PATH_SECRET)
+        except:
+            pass
+        try:
+            remove(LOCAL_PATH_DB)
+        except:
+            pass
+
     def import_batch(self, batch):
         self.check_consistency_incoming_batch(batch)
         if not self.initialized():
-            self.initialize(batch)
+            try:
+                self.initialize(batch)
+            except:
+                self.reset()
+                raise # raise original exception to inform frontend about initial reason of failure
         else:
             self.check_compatibility_incoming_batch(batch)
 
