@@ -20,6 +20,6 @@
     "jquery": "^3.4.0",
     "jquery-qrcode2": "^1.0.0",
     "popper.js": "^1.15.0",
-    "underscore": "^1.9.1"
+    "underscore": "^1.12.1"
   }
 }
